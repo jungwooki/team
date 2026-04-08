@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MPS PRO | Team Dashboard</title>
+
+  <!-- 1. Pretendard 폰트 로드 -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  
+  <!-- 2. Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 3. Babel 컴파일러 (브라우저에서 JSX 실행용) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- 4. 모듈 Import Map (React, Recharts, Lucide Icons) -->
+  <!-- 에러 수정: "react-dom" 기본 경로 추가 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom": "https://esm.sh/react-dom@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.292.0?external=react",
+        "recharts": "https://esm.sh/recharts@2.10.3?external=react,react-dom"
+      }
+    }
+  </script>
+
+  <!-- 커스텀 스크롤바 스타일 -->
+  <style>
+    body { font-family: 'Pretendard', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body>
+  <!-- React 앱이 렌더링될 루트 요소 -->
+  <div id="root"></div>
+
+  <!-- React 앱 코드 (ES Module + Babel) -->
+  <script type="text/babel" data-type="module">
+    import React, { useState, useMemo, useEffect } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import {
+      Users, Search, Brain, Activity, Bone, AlertCircle, ChevronDown, ChevronUp, ChevronRight,
+      Download, Settings, Maximize2, Lock, Shield, Trophy, Info, X, Zap, HeartPulse, Flame, Calendar,
+      ArrowRight, FileText, LayoutGrid, ArrowLeft, TrendingUp, LineChart as LineChartIcon
+    } from 'lucide-react';
+    import {
+      Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+      BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+      ScatterChart, Scatter, ZAxis, LineChart, Line, ComposedChart
+    } from 'recharts';
+
+    // --- Data Generator ---
+    const TEAMS = ['서울대동초', '서울솔트FC', '양강초', '영등포스포츠클럽', '서울세일중학교', '화성FC'];
+    const LAST_NAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황', '안', '송', '전', '홍'];
+    const FIRST_NAMES = ['민준', '서준', '도윤', '예준', '시우', '하준', '지호', '주원', '건우', '우진', '선우', '서진', '연우', '은우', '윤우', '승우', '지훈', '도현', '동현', '준서'];
+
+    const generateRandomScore = (min, max) => Number((Math.random() * (max - min) + min).toFixed(1));
+    const getRandomStatus = () => {
+      const rand = Math.random();
+      if (rand > 0.85) return '위험';
+      if (rand > 0.6) return '주의';
+      return '양호';
+    };
+
+    // 선수별 1, 2회차 누적 데이터 생성
+    const generateMockData = () => {
+      const data = [];
+      let idCounter = 1;
+
+      TEAMS.forEach(team => {
+        const playerCount = Math.floor(Math.random() * 6) + 15; 
+        
+        for (let i = 0; i < playerCount; i++) {
+          const playerId = `P${String(idCounter++).padStart(4, '0')}`;
+          const name = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)] + FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+          
+          const isGrade6 = i % 2 === 0;
+          const birthYear = isGrade6 ? '2014' : '2015';
+          const birthMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+          const birthDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
+          
+          let height = generateRandomScore(140, 160);
+          let weight = generateRandomScore(35, 50);
+          let boneAgeYear = isGrade6 ? Math.floor(Math.random() * 3) + 11 : Math.floor(Math.random() * 3) + 10;
+          let boneAgeMonth = Math.floor(Math.random() * 12);
+          
+          ['2026-03', '2026-06'].forEach((dateCode, idx) => {
+            if (idx === 1) {
+              height += generateRandomScore(0.5, 2.5);
+              weight += generateRandomScore(0.2, 1.5);
+              boneAgeMonth += 3;
+              if (boneAgeMonth >= 12) {
+                boneAgeYear += 1;
+                boneAgeMonth -= 12;
+              }
+            }
+
+            const tension = generateRandomScore(2.0, 6.0);
+            const support = generateRandomScore(2.0, 6.0);
+            const prep = generateRandomScore(2.0, 6.0);
+            const recovery = generateRandomScore(2.0, 6.0);
+            const focus = generateRandomScore(2.0, 6.0);
+            const stability = generateRandomScore(2.0, 6.0);
+            const mgi = Number(((tension + support + prep + recovery + focus + stability) / 6).toFixed(1));
+
+            const boneAgeDecimal = boneAgeYear + (boneAgeMonth / 12);
+
+            data.push({
+              recordId: `${playerId}-${dateCode}`,
+              playerId,
+              name,
+              gender: '남',
+              birth: `${birthYear}-${birthMonth}-${birthDay}`,
+              team,
+              grade: isGrade6 ? 6 : 5,
+              testDateCode: dateCode,
+              centerName: idx === 0 ? '서울신도림센터' : '동탄센터',
+              height: Number(height.toFixed(1)),
+              weight: Number(weight.toFixed(1)),
+              mental: { 
+                tension, support, prep, recovery, focus, stability, mgi, 
+                wmi: generateRandomScore(2.5, 5.5),
+                detail: { attitude: generateRandomScore(3.0, 6.0) }
+              },
+              physical: { 
+                fat: generateRandomScore(10, 22), 
+                ecw: generateRandomScore(0.365, 0.395),
+                hrv: {
+                  balance: generateRandomScore(1, 5),
+                  phyLoad: generateRandomScore(1, 5),
+                  fatigue: generateRandomScore(1, 5),
+                  lf: Math.floor(Math.random() * 800) + 200, 
+                  hf: Math.floor(Math.random() * 800) + 200, 
+                  rmssd: Math.floor(Math.random() * 60) + 20 
+                },
+                yBalance: {
+                  left: Math.floor(Math.random() * 20) + 80,
+                  right: Math.floor(Math.random() * 20) + 80,
+                  score: Math.floor(Math.random() * 20) + 80,
+                },
+                ultrasound: {
+                  achillesL: getRandomStatus(), achillesR: getRandomStatus(),
+                  kneeL: getRandomStatus(), kneeR: getRandomStatus(),
+                  footL: getRandomStatus(), footR: getRandomStatus()
+                },
+                riskLevel: {
+                  phyLoadRisk: getRandomStatus(),
+                  fatigueRisk: getRandomStatus(),
+                  redSRisk: getRandomStatus()
+                }
+              },
+              growth: { 
+                boneAgeYear, 
+                boneAgeMonth,
+                boneAgeDecimal: Number(boneAgeDecimal.toFixed(1)),
+                stage: boneAgeDecimal < 11.5 ? 'Pre-PHV' : boneAgeDecimal < 13 ? 'Stage 1' : 'Stage 2', 
+                pah: generateRandomScore(172, 185) 
+              }
+            });
+          });
+        }
+      });
+      return data;
+    };
+
+    const GLOBAL_DATA = generateMockData();
+
+    // 주기화 검진 아카이브
+    const REPORT_ARCHIVE = {
+      grade6: [
+        { id: 'r6-1', grade: 6, dateCode: '2026-03', dateLabel: '2026년 3월', title: '1분기 정기평가', center: '서울신도림센터', status: '완료' },
+        { id: 'r6-2', grade: 6, dateCode: '2026-06', dateLabel: '2026년 6월', title: '2분기 정기평가', center: '서울신도림센터', status: '완료' }
+      ],
+      grade5: [
+        { id: 'r5-1', grade: 5, dateCode: '2026-03', dateLabel: '2026년 3월', title: '1분기 정기평가', center: '동탄센터', status: '완료' },
+        { id: 'r5-2', grade: 5, dateCode: '2026-06', dateLabel: '2026년 6월', title: '2분기 정기평가', center: '동탄센터', status: '완료' }
+      ]
+    };
+
+    // --- Components ---
+
+    const StatusBadge = ({ status, minimal = false }) => {
+      if (minimal) {
+        switch(status) {
+          case '위험': return <div className="w-2 h-2 rounded-full bg-[#e30613]" title="위험"></div>;
+          case '주의': return <div className="w-2 h-2 rounded-full bg-[#fbbc04]" title="주의"></div>;
+          default: return <div className="w-2 h-2 rounded-full bg-[#10b981]" title="양호"></div>;
+        }
+      }
+      switch(status) {
+        case '위험': return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#e30613]/10 text-[#e30613] border border-[#e30613]/20">위험</span>;
+        case '주의': return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#fbbc04]/10 text-[#d97706] border border-[#fbbc04]/20">주의</span>;
+        case '양호': return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20">양호</span>;
+        default: return <span className="text-slate-300">-</span>;
+      }
+    };
+
+    // 3줄 툴팁
+    const InfoTooltip = ({ content }) => {
+      const [show, setShow] = useState(false);
+      return (
+        <div className="relative inline-block ml-1" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+          <div className="w-3.5 h-3.5 bg-slate-200 text-slate-500 rounded-full flex items-center justify-center text-[9px] font-bold cursor-help hover:bg-[#0b1c2d] hover:text-white transition-colors">
+            i
+          </div>
+          {show && (
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-72 bg-[#0b1c2d] text-white text-xs p-3.5 rounded-lg shadow-2xl z-[100] normal-case font-normal leading-relaxed text-left border border-slate-700 whitespace-pre-wrap">
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mt-0 border-4 border-transparent border-b-[#0b1c2d]"></div>
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    function App() {
+      const [currentScreen, setCurrentScreen] = useState('LOGIN'); 
+      const [loginTeam, setLoginTeam] = useState(TEAMS[0]);
+      const [password, setPassword] = useState('');
+      const [loginError, setLoginError] = useState('');
+      
+      // 선택 상태
+      const [selectedReport, setSelectedReport] = useState(null); 
+      const [selectedPlayerId, setSelectedPlayerId] = useState(null); 
+
+      // Dashboard States
+      const [activeTab, setActiveTab] = useState('overview');
+      const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+
+      // 로그인 핸들러
+      const handleLogin = (e) => {
+        e.preventDefault();
+        if (password === '1') {
+          setLoginError('');
+          setCurrentScreen('SELECTION');
+        } else {
+          setLoginError('비밀번호가 일치하지 않습니다.');
+        }
+      };
+
+      const handleSelectReport = (report) => {
+        if (report.status !== '완료') return;
+        setSelectedReport(report);
+        setActiveTab('overview');
+        setCurrentScreen('DASHBOARD');
+      };
+
+      const handlePlayerClick = (playerId) => {
+        setSelectedPlayerId(playerId);
+        setCurrentScreen('PLAYER_DETAIL');
+      };
+
+      // --- Data Processing (DASHBOARD) ---
+      const dashboardData = useMemo(() => {
+        if (!selectedReport) return [];
+        return GLOBAL_DATA.filter(p => 
+          p.team === loginTeam && 
+          p.grade === selectedReport.grade && 
+          p.testDateCode === selectedReport.dateCode
+        );
+      }, [loginTeam, selectedReport]);
+
+      const nationalStats = useMemo(() => {
+        const avg = (keyFn) => Number((GLOBAL_DATA.reduce((sum, p) => sum + keyFn(p), 0) / GLOBAL_DATA.length).toFixed(1));
+        return {
+          tension: avg(p => p.mental.tension),
+          support: avg(p => p.mental.support),
+          prep: avg(p => p.mental.prep),
+          recovery: avg(p => p.mental.recovery),
+          focus: avg(p => p.mental.focus),
+          stability: avg(p => p.mental.stability)
+        };
+      }, []);
+
+      const europeStats = { tension: 5.2, support: 5.6, prep: 5.1, recovery: 5.3, focus: 5.0, stability: 5.4 };
+
+      // 팀 평균 계산
+      const teamStats = useMemo(() => {
+        if (!dashboardData.length) return null;
+        
+        const avg = (keyFn) => Number((dashboardData.reduce((sum, p) => sum + keyFn(p), 0) / dashboardData.length).toFixed(1));
+        const avg3 = (keyFn) => Number((dashboardData.reduce((sum, p) => sum + keyFn(p), 0) / dashboardData.length).toFixed(3));
+        
+        const riskPlayers = dashboardData.filter(p => 
+          p.physical.riskLevel.redSRisk === '위험' || 
+          p.physical.riskLevel.phyLoadRisk === '위험' || 
+          p.physical.riskLevel.fatigueRisk === '위험'
+        );
+
+        const scatterData = dashboardData.map((p, index) => ({
+          name: p.name,
+          boneAgeDecimal: p.growth.boneAgeDecimal,
+          yPos: (index % 5) + 1, 
+          boneAgeText: `${p.growth.boneAgeYear}년 ${p.growth.boneAgeMonth}월`
+        }));
+
+        return {
+          mental: {
+            mgi: avg(p => p.mental.mgi),
+            wmi: avg(p => p.mental.wmi),
+            tension: avg(p => p.mental.tension),
+            support: avg(p => p.mental.support),
+            prep: avg(p => p.mental.prep),
+            recovery: avg(p => p.mental.recovery),
+            focus: avg(p => p.mental.focus),
+            stability: avg(p => p.mental.stability)
+          },
+          physical: {
+            weight: avg(p => p.weight),
+            fat: avg(p => p.physical.fat),
+            ecw: avg3(p => p.physical.ecw),
+            yBalanceLeft: avg(p => p.physical.yBalance.left),
+            yBalanceRight: avg(p => p.physical.yBalance.right),
+            yBalanceScore: avg(p => p.physical.yBalance.score),
+            hrvBalance: avg(p => p.physical.hrv.balance),
+            hrvLf: avg(p => p.physical.hrv.lf),
+            hrvHf: avg(p => p.physical.hrv.hf),
+            hrvRmssd: avg(p => p.physical.hrv.rmssd)
+          },
+          growth: {
+            height: avg(p => p.height),
+            avgBoneAge: avg(p => p.growth.boneAgeDecimal), 
+            pah: avg(p => p.growth.pah),
+            scatterData: scatterData
+          },
+          physicalRiskPlayers: riskPlayers.slice(0, 5) 
+        };
+      }, [dashboardData]);
+
+      // 정렬 로직
+      const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+        setSortConfig({ key, direction });
+      };
+      const getNestedValue = (obj, path) => path.split('.').reduce((acc, part) => acc && acc[part], obj);
+      const processedData = useMemo(() => {
+        const sorted = [...dashboardData].sort((a, b) => {
+          const aValue = getNestedValue(a, sortConfig.key);
+          const bValue = getNestedValue(b, sortConfig.key);
+          if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+        });
+        return sorted;
+      }, [dashboardData, sortConfig]);
+
+
+      // --- Data Processing (PLAYER_DETAIL) ---
+      const playerHistoryData = useMemo(() => {
+        if (!selectedPlayerId) return [];
+        return GLOBAL_DATA.filter(p => p.playerId === selectedPlayerId)
+          .sort((a, b) => a.testDateCode.localeCompare(b.testDateCode));
+      }, [selectedPlayerId]);
+      
+      const currentPlayer = playerHistoryData[playerHistoryData.length - 1];
+
+
+      // 공통 유틸
+      const getScoreColor = (score) => {
+        if (score >= 4.5) return 'text-[#10b981] font-bold'; 
+        if (score >= 3.0) return 'text-[#fbbc04] font-bold'; 
+        return 'text-[#e30613] font-bold'; 
+      };
+      const getEcwColor = (ecw) => {
+        if (ecw >= 0.380) return 'text-[#e30613] font-black';
+        return 'text-[#10b981] font-bold';
+      };
+
+      const ScatterTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+          const data = payload[0].payload;
+          return (
+            <div className="bg-[#0b1c2d] text-white p-3 rounded-lg shadow-xl border border-slate-700 z-[100]">
+              <p className="font-black text-sm mb-1">{data.name}</p>
+              <p className="text-xs text-[#fbbc04]">뼈나이: {data.boneAgeText}</p>
+            </div>
+          );
+        }
+        return null;
+      };
+
+
+      // ==========================================
+      // RENDER: LOGIN SCREEN
+      // ==========================================
+      if (currentScreen === 'LOGIN') {
+        return (
+          <div className="min-h-screen bg-[#0b1c2d] flex items-center justify-center relative overflow-hidden">
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#e30613] rounded-full blur-[150px] opacity-20"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#fbbc04] rounded-full blur-[150px] opacity-10"></div>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+
+            <div className="relative z-10 w-full max-w-md px-6">
+              <div className="text-center mb-10">
+                <div className="w-20 h-20 bg-gradient-to-br from-[#e30613] to-[#8a040b] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl border border-white/10 transform rotate-3">
+                  <Trophy className="w-10 h-10 text-white" />
+                </div>
+                <h1 className="text-4xl font-black text-white tracking-tight">MPS <span className="text-[#e30613]">PRO</span></h1>
+                <p className="text-slate-400 mt-2 text-sm">Professional Team Analysis Center</p>
+              </div>
+
+              <form onSubmit={handleLogin} className="bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/10 shadow-2xl">
+                <div className="mb-6">
+                  <label className="block text-slate-300 text-xs font-bold mb-2 uppercase tracking-wider">소속 팀 선택</label>
+                  <div className="relative">
+                    <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <select 
+                      className="w-full bg-[#0b1c2d]/50 border border-slate-600 text-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-[#e30613] focus:ring-1 focus:ring-[#e30613] transition-colors appearance-none font-semibold"
+                      value={loginTeam}
+                      onChange={(e) => setLoginTeam(e.target.value)}
+                    >
+                      {TEAMS.map(team => (
+                        <option key={team} value={team}>{team}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="mb-8">
+                  <label className="block text-slate-300 text-xs font-bold mb-2 uppercase tracking-wider">액세스 코드</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input 
+                      type="password" 
+                      placeholder="비밀번호 입력 (1)"
+                      className="w-full bg-[#0b1c2d]/50 border border-slate-600 text-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-[#e30613] focus:ring-1 focus:ring-[#e30613] transition-colors font-medium placeholder-slate-500"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                  {loginError && <p className="text-[#e30613] text-xs font-bold mt-2 flex items-center"><AlertCircle className="w-3 h-3 mr-1" />{loginError}</p>}
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-[#e30613] to-[#c7000e] hover:from-[#c7000e] hover:to-[#a0000a] text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-[#e30613]/30 flex items-center justify-center uppercase tracking-widest text-sm"
+                >
+                  로그인
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+      }
+
+
+      // ==========================================
+      // RENDER: SELECTION SCREEN
+      // ==========================================
+      if (currentScreen === 'SELECTION') {
+        return (
+          <div className="min-h-screen bg-[#f1f5f9] flex flex-col">
+            <header className="bg-[#0b1c2d] text-white h-16 flex items-center justify-between px-8 shadow-md">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-6 h-6 text-[#fbbc04]" />
+                <h1 className="text-xl font-black tracking-widest uppercase">MPS PRO <span className="text-slate-500 mx-2">|</span> {loginTeam}</h1>
+              </div>
+              <button onClick={() => setCurrentScreen('LOGIN')} className="text-sm font-semibold text-slate-400 hover:text-white transition-colors">
+                로그아웃
+              </button>
+            </header>
+
+            <main className="flex-1 p-8 md:p-12 max-w-7xl mx-auto w-full">
+              <div className="mb-10 text-center">
+                <h2 className="text-3xl font-black text-[#0b1c2d] mb-2">주기화 검진 리포트 아카이브</h2>
+                <p className="text-slate-500 font-medium">열람할 학년(연령대)과 측정 일자를 선택하세요.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                {/* 6학년 Column */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                  <div className="bg-[#0b1c2d] p-4 text-center">
+                    <h3 className="text-lg font-black text-white">6학년 (U12)</h3>
+                    <p className="text-xs text-[#fbbc04] font-bold">2014년생 대상</p>
+                  </div>
+                  <div className="p-6 space-y-4 flex-1 bg-slate-50">
+                    {REPORT_ARCHIVE.grade6.map(report => (
+                      <button 
+                        key={report.id}
+                        onClick={() => handleSelectReport(report)}
+                        disabled={report.status !== '완료'}
+                        className={`w-full text-left p-5 rounded-xl border-2 transition-all flex items-center justify-between group ${
+                          report.status === '완료' 
+                            ? 'border-transparent bg-white shadow-md hover:border-[#e30613] hover:shadow-lg cursor-pointer' 
+                            : 'border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <Calendar className={`w-4 h-4 ${report.status === '완료' ? 'text-[#e30613]' : 'text-slate-400'}`} />
+                            <span className={`font-black text-lg ${report.status === '완료' ? 'text-[#0b1c2d]' : 'text-slate-500'}`}>{report.dateLabel}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold bg-slate-100 px-2 py-1 rounded text-slate-600">{report.title}</span>
+                            <span className="text-xs text-slate-500">{report.center}</span>
+                          </div>
+                        </div>
+                        {report.status === '완료' ? (
+                          <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[#e30613] flex items-center justify-center transition-colors">
+                            <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-white" />
+                          </div>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-400 bg-slate-200 px-2 py-1 rounded">예정</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 5학년 Column */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                  <div className="bg-[#0b1c2d] p-4 text-center">
+                    <h3 className="text-lg font-black text-white">5학년 (U11)</h3>
+                    <p className="text-xs text-[#fbbc04] font-bold">2015년생 대상</p>
+                  </div>
+                  <div className="p-6 space-y-4 flex-1 bg-slate-50">
+                    {REPORT_ARCHIVE.grade5.map(report => (
+                      <button 
+                        key={report.id}
+                        onClick={() => handleSelectReport(report)}
+                        disabled={report.status !== '완료'}
+                        className={`w-full text-left p-5 rounded-xl border-2 transition-all flex items-center justify-between group ${
+                          report.status === '완료' 
+                            ? 'border-transparent bg-white shadow-md hover:border-[#e30613] hover:shadow-lg cursor-pointer' 
+                            : 'border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <Calendar className={`w-4 h-4 ${report.status === '완료' ? 'text-[#e30613]' : 'text-slate-400'}`} />
+                            <span className={`font-black text-lg ${report.status === '완료' ? 'text-[#0b1c2d]' : 'text-slate-500'}`}>{report.dateLabel}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold bg-slate-100 px-2 py-1 rounded text-slate-600">{report.title}</span>
+                            <span className="text-xs text-slate-500">{report.center}</span>
+                          </div>
+                        </div>
+                        {report.status === '완료' ? (
+                          <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[#e30613] flex items-center justify-center transition-colors">
+                            <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-white" />
+                          </div>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-400 bg-slate-200 px-2 py-1 rounded">예정</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        );
+      }
+
+
+      // ==========================================
+      // RENDER: PLAYER DETAIL (개인 히스토리 추적)
+      // ==========================================
+      if (currentScreen === 'PLAYER_DETAIL' && currentPlayer) {
+        return (
+          <div className="h-screen bg-[#f1f5f9] flex flex-col overflow-hidden">
+            <header className="bg-[#0b1c2d] text-white h-14 flex items-center justify-between px-6 shrink-0 shadow-md">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setCurrentScreen('DASHBOARD')} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors mr-2">
+                  <ArrowLeft className="w-5 h-5 text-slate-300" />
+                </button>
+                <div className="flex flex-col">
+                  <h1 className="text-sm font-black tracking-widest text-white flex items-center">
+                    MPS PRO <span className="mx-2 text-slate-600">|</span> <span className="text-[#fbbc04] font-bold">{loginTeam}</span>
+                  </h1>
+                  <span className="text-[10px] text-slate-400">{currentPlayer.name} 선수의 누적 데이터 추적</span>
+                </div>
+              </div>
+            </header>
+
+            <main className="flex-1 overflow-y-auto p-6 bg-slate-50">
+              <div className="max-w-6xl mx-auto space-y-6">
+                
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
+                  <div className="flex items-center gap-6">
+                    <div className="w-20 h-20 bg-[#0b1c2d] text-white rounded-full flex items-center justify-center text-3xl font-black shadow-lg">
+                      {currentPlayer.name[0]}
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black text-[#0b1c2d] flex items-center">
+                        {currentPlayer.name} 
+                        <span className="ml-3 text-sm font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded">{currentPlayer.playerId}</span>
+                      </h2>
+                      <p className="text-slate-500 font-medium mt-1">{currentPlayer.birth} ({currentPlayer.grade}학년) | 최근 검진: {currentPlayer.testDateCode}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="bg-[#fbbc04]/10 border border-[#fbbc04]/20 p-3 rounded-xl text-center min-w-[100px]">
+                      <p className="text-[10px] text-[#d97706] font-bold uppercase">최근 성장단계</p>
+                      <p className="text-lg font-black text-[#0b1c2d] mt-1">{currentPlayer.growth.stage}</p>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl text-center min-w-[100px]">
+                      <p className="text-[10px] text-blue-600 font-bold uppercase">예측 신장</p>
+                      <p className="text-lg font-black text-[#0b1c2d] mt-1">{currentPlayer.growth.pah.toFixed(1)}cm</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-base font-black text-[#0b1c2d] flex items-center mb-6">
+                      <TrendingUp className="w-5 h-5 mr-2 text-indigo-600" />
+                      핵심 멘탈 지수 추이 (MGI / WMI)
+                    </h3>
+                    <div className="h-[250px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={playerHistoryData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="testDateCode" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                          <YAxis domain={[0, 6]} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                          <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                          <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
+                          <Line type="monotone" name="MGI (종합)" dataKey="mental.mgi" stroke="#4f46e5" strokeWidth={3} dot={{ r: 6, fill: '#4f46e5', strokeWidth: 2, stroke: '#fff' }} />
+                          <Line type="monotone" name="WMI (회복)" dataKey="mental.wmi" stroke="#06b6d4" strokeWidth={3} dot={{ r: 6, fill: '#06b6d4', strokeWidth: 2, stroke: '#fff' }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 className="text-base font-black text-[#0b1c2d] flex items-center mb-6">
+                      <Bone className="w-5 h-5 mr-2 text-[#fbbc04]" />
+                      체격 성장 추이 (키 / 체중)
+                    </h3>
+                    <div className="h-[250px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={playerHistoryData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="testDateCode" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                          <YAxis yAxisId="left" domain={['dataMin - 5', 'dataMax + 5']} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                          <YAxis yAxisId="right" orientation="right" domain={['dataMin - 5', 'dataMax + 5']} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                          <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                          <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
+                          <Bar yAxisId="left" name="키 (cm)" dataKey="height" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                          <Line yAxisId="right" type="monotone" name="체중 (kg)" dataKey="weight" stroke="#e30613" strokeWidth={3} dot={{ r: 6, fill: '#e30613', strokeWidth: 2, stroke: '#fff' }} />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+
+                {/* History Table */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                  <div className="p-5 border-b border-slate-200 bg-slate-50 flex items-center">
+                    <FileText className="w-5 h-5 mr-2 text-slate-500" />
+                    <h3 className="text-base font-black text-[#0b1c2d]">상세 검진 이력 요약</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm whitespace-nowrap min-w-max">
+                      <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-xs">
+                        <tr>
+                          <th className="px-4 py-3">측정 일자</th>
+                          <th className="px-4 py-3">측정 센터</th>
+                          <th className="px-4 py-3 text-center bg-indigo-50/50">MGI / WMI</th>
+                          <th className="px-4 py-3 text-right bg-blue-50/50">키 / 체중</th>
+                          <th className="px-4 py-3 text-center bg-[#fbbc04]/10">뼈나이 / 성장단계</th>
+                          <th className="px-4 py-3 text-center bg-[#e30613]/5">부하위험 / 피로위험 / RED-S</th>
+                          <th className="px-4 py-3 text-center bg-purple-50">초음파 (아킬레스/무릎/발바닥)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {playerHistoryData.map((record) => (
+                          <tr key={`history-${record.recordId}`} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3 font-black text-[#0b1c2d]">{record.testDateCode}</td>
+                            <td className="px-4 py-3 text-slate-500 text-xs">{record.centerName}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`font-bold ${getScoreColor(record.mental.mgi)}`}>{record.mental.mgi.toFixed(1)}</span>
+                              <span className="text-slate-300 mx-1">/</span>
+                              <span className={`font-bold ${getScoreColor(record.mental.wmi)}`}>{record.mental.wmi.toFixed(1)}</span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-700 font-medium">
+                              {record.height.toFixed(1)}cm / {record.weight.toFixed(1)}kg
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="text-[#d97706] font-bold mr-2">{record.growth.boneAgeYear}년 {record.growth.boneAgeMonth}월</span>
+                              <span className="text-slate-500 text-xs">({record.growth.stage})</span>
+                            </td>
+                            <td className="px-4 py-3 text-center space-x-1">
+                              <StatusBadge status={record.physical.riskLevel.phyLoadRisk} />
+                              <StatusBadge status={record.physical.riskLevel.fatigueRisk} />
+                              <StatusBadge status={record.physical.riskLevel.redSRisk} />
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex justify-center gap-2">
+                                <span className="flex items-center gap-1 text-[10px] text-slate-500 uppercase">
+                                  A: <StatusBadge minimal status={record.physical.ultrasound.achillesR} />
+                                </span>
+                                <span className="flex items-center gap-1 text-[10px] text-slate-500 uppercase">
+                                  K: <StatusBadge minimal status={record.physical.ultrasound.kneeR} />
+                                </span>
+                                <span className="flex items-center gap-1 text-[10px] text-slate-500 uppercase">
+                                  F: <StatusBadge minimal status={record.physical.ultrasound.footR} />
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            </main>
+          </div>
+        );
+      }
+
+
+      // ==========================================
+      // RENDER: MAIN TEAM DASHBOARD
+      // ==========================================
+      const SortableHeader = ({ label, sortKey, infoContent, className = "" }) => (
+        <th 
+          className={`px-3 py-2.5 font-bold text-[#0b1c2d] cursor-pointer hover:bg-slate-100 select-none border-b-2 border-slate-200 relative ${className}`}
+          onClick={() => handleSort(sortKey)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="text-xs uppercase tracking-tight">{label}</span>
+              {infoContent && <InfoTooltip content={infoContent} />}
+            </div>
+            <div className="flex flex-col text-[8px] ml-1 opacity-60">
+              <ChevronUp className={`w-3 h-3 -mb-[3px] ${sortConfig.key === sortKey && sortConfig.direction === 'asc' ? 'text-[#e30613] opacity-100' : 'text-slate-400'}`} />
+              <ChevronDown className={`w-3 h-3 ${sortConfig.key === sortKey && sortConfig.direction === 'desc' ? 'text-[#e30613] opacity-100' : 'text-slate-400'}`} />
+            </div>
+          </div>
+        </th>
+      );
+
+      return (
+        <div className="h-screen bg-[#f1f5f9] flex flex-col overflow-hidden">
+          
+          <header className="bg-[#0b1c2d] text-white h-14 flex items-center justify-between px-6 shrink-0 shadow-md relative z-[60]">
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#e30613] to-[#8a040b] rounded-lg flex items-center justify-center shadow-inner border border-white/10">
+                <Trophy className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-sm font-black tracking-widest text-white uppercase flex items-center">
+                  MPS PRO <span className="mx-2 text-slate-600">|</span> <span className="text-[#fbbc04] font-bold">{loginTeam}</span>
+                </h1>
+                <button 
+                  onClick={() => setCurrentScreen('SELECTION')} 
+                  className="text-[10px] text-slate-400 hover:text-white transition-colors flex items-center text-left"
+                >
+                  <LayoutGrid className="w-3 h-3 mr-1" />
+                  {selectedReport?.dateLabel} 평가 리포트 ({selectedReport?.center}) <ChevronDown className="w-3 h-3 ml-0.5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button onClick={() => setCurrentScreen('LOGIN')} className="text-xs font-semibold text-slate-400 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-md">
+                로그아웃
+              </button>
+            </div>
+          </header>
+
+          {/* Tabs */}
+          <div className="bg-white border-b border-slate-200 px-6 pt-3 flex flex-col shrink-0 z-50 shadow-sm relative">
+            <div className="flex space-x-6">
+              {[
+                { id: 'overview', label: '종합 인포그래픽', icon: Activity },
+                { id: 'mental', label: '멘탈 세부데이터', icon: Brain },
+                { id: 'physical', label: '피지컬/리스크', icon: HeartPulse },
+                { id: 'growth', label: '성장/뼈나이 분석', icon: Bone }
+              ].map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center pb-3 text-sm font-bold transition-all relative ${
+                      isActive ? 'text-[#e30613]' : 'text-slate-500 hover:text-[#0b1c2d]'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 mr-2 ${isActive ? 'text-[#e30613]' : 'text-slate-400'}`} />
+                    {tab.label}
+                    {isActive && (
+                      <div className="absolute bottom-0 left-0 w-full h-1 bg-[#e30613] rounded-t-md"></div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Main Area */}
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 bg-slate-50 relative z-0">
+            
+            {/* TAB 1: OVERVIEW */}
+            {activeTab === 'overview' && teamStats && (
+              <div className="max-w-7xl mx-auto space-y-6 pb-12">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-[#0b1c2d] uppercase">TEAM COMMAND CENTER</h2>
+                    <p className="text-sm text-slate-500 font-medium">소속 팀의 핵심 멘탈, 피지컬, 성장 지표를 한눈에 파악하세요.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                  {/* Mental Radar */}
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[400px]">
+                    <div className="flex items-center justify-between mb-4 shrink-0">
+                      <h3 className="text-base font-black text-[#0b1c2d] flex items-center">
+                        <Brain className="w-5 h-5 mr-2 text-indigo-600" />
+                        멘탈 평균 분석
+                      </h3>
+                    </div>
+                    <div className="w-full h-[300px] flex-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="60%" data={[
+                          { subject: '긴장관리', team: teamStats.mental.tension, national: nationalStats.tension, europe: europeStats.tension },
+                          { subject: '지원환경', team: teamStats.mental.support, national: nationalStats.support, europe: europeStats.support },
+                          { subject: '준비능력', team: teamStats.mental.prep, national: nationalStats.prep, europe: europeStats.prep },
+                          { subject: '실수회복', team: teamStats.mental.recovery, national: nationalStats.recovery, europe: europeStats.recovery },
+                          { subject: '집중조절', team: teamStats.mental.focus, national: nationalStats.focus, europe: europeStats.focus },
+                          { subject: '경기안정', team: teamStats.mental.stability, national: nationalStats.stability, europe: europeStats.stability }
+                        ]}>
+                          <PolarGrid stroke="#e2e8f0" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 11, fontWeight: 'bold' }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 6]} tick={{ fill: '#94a3b8' }} />
+                          <RechartsTooltip />
+                          <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
+                          <Radar name={`팀 평균`} dataKey="team" stroke="#e30613" fill="#e30613" fillOpacity={0.4} strokeWidth={2} />
+                          <Radar name="전국 평균" dataKey="national" stroke="#0b1c2d" fill="#0b1c2d" fillOpacity={0.0} strokeDasharray="3 3" strokeWidth={1.5} />
+                          <Radar name="유럽 유스" dataKey="europe" stroke="#fbbc04" fill="#fbbc04" fillOpacity={0.1} strokeWidth={2} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Physical Risk */}
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[400px]">
+                    <div className="flex items-center justify-between mb-4 shrink-0">
+                      <h3 className="text-base font-black text-[#0b1c2d] flex items-center">
+                        <Flame className="w-5 h-5 mr-2 text-[#e30613]" />
+                        피지컬 위험 선수 알림
+                      </h3>
+                      <span className="text-xs bg-[#e30613]/10 text-[#e30613] font-bold px-2 py-1 rounded">Urgent</span>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                      {teamStats.physicalRiskPlayers.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-slate-400 text-sm font-bold">위험 지표가 발생한 선수가 없습니다.</div>
+                      ) : (
+                        teamStats.physicalRiskPlayers.map((player) => (
+                          <div key={`risk-${player.recordId}`} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center font-black text-[#0b1c2d] border border-slate-200 shadow-sm text-xs">
+                                <AlertCircle className="w-4 h-4 text-[#e30613]" />
+                              </div>
+                              <div>
+                                <p className="font-bold text-sm text-[#0b1c2d] cursor-pointer hover:text-blue-600 hover:underline" onClick={() => handlePlayerClick(player.playerId)}>{player.name}</p>
+                                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{player.playerId}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              {player.physical.riskLevel.phyLoadRisk === '위험' && <span className="bg-[#e30613] text-white text-[10px] font-bold px-2 py-1 rounded">신체부하</span>}
+                              {player.physical.riskLevel.fatigueRisk === '위험' && <span className="bg-[#fbbc04] text-[#0b1c2d] text-[10px] font-bold px-2 py-1 rounded">피로도</span>}
+                              {player.physical.riskLevel.redSRisk === '위험' && <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded">RED-S</span>}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Growth Timeline */}
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[400px]">
+                    <div className="flex items-center justify-between mb-4 shrink-0">
+                      <h3 className="text-base font-black text-[#0b1c2d] flex items-center">
+                        <Bone className="w-5 h-5 mr-2 text-[#fbbc04]" />
+                        성장 속도 스펙트럼 (전체)
+                      </h3>
+                    </div>
+                    
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div className="text-center shrink-0">
+                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-1">팀 평균 뼈나이</p>
+                        <p className="text-3xl font-black text-[#0b1c2d]">{teamStats.growth.avgBoneAge.toFixed(1)}<span className="text-base text-slate-400 font-bold ml-1">세</span></p>
+                      </div>
+
+                      <div className="w-full h-[200px] flex-1 mt-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ScatterChart margin={{ top: 20, right: 20, bottom: 0, left: -20 }}>
+                            <XAxis 
+                              type="number" 
+                              dataKey="boneAgeDecimal" 
+                              domain={['dataMin - 0.5', 'dataMax + 0.5']} 
+                              tick={{ fontSize: 10, fill: '#64748b' }}
+                              tickFormatter={(val) => `${val.toFixed(1)}세`}
+                              name="뼈나이"
+                              axisLine={true}
+                              tickLine={false}
+                            />
+                            <YAxis type="number" dataKey="yPos" hide domain={[0, 6]} />
+                            <ZAxis type="number" range={[150, 150]} /> 
+                            <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} content={<ScatterTooltip />} />
+                            <Scatter name="선수" data={teamStats.growth.scatterData} fill="#3b82f6" fillOpacity={0.7} />
+                          </ScatterChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="text-center text-[10px] text-slate-400 font-bold mt-2 shrink-0">점을 터치하거나 마우스를 올리세요</div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+
+            {/* TAB 2, 3, 4: DATA GRIDS */}
+            {activeTab !== 'overview' && (
+              <div className="h-full flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                
+                <div className="flex-1 overflow-auto relative z-0">
+                  <table className="w-full text-left border-collapse whitespace-nowrap min-w-max relative">
+                    <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+                      <tr>
+                        {/* 공통 고정 컬럼 */}
+                        <SortableHeader label="ID" sortKey="playerId" className="w-16 sticky left-0 z-50 bg-slate-50" />
+                        <SortableHeader label="선수명" sortKey="name" infoContent="이름을 클릭하면 과거 검진 결과가 누적된\n[선수별 개인 기록 페이지]로 이동합니다." className="w-24 sticky left-16 z-50 bg-slate-50 border-r border-slate-200" />
+                        <SortableHeader label="생년월일" sortKey="birth" className="w-24" />
+                        
+                        {/* 동적 컬럼 */}
+                        {activeTab === 'mental' && (
+                          <>
+                            <SortableHeader label="MGI 종합" sortKey="mental.mgi" infoContent="Mental Growth Index: 6개 핵심 멘탈 지표의 평균 점수입니다.\n선수의 전반적인 심리적 준비 상태와 성장 가능성을 나타내는\n가장 중요한 종합 지표입니다." className="text-center bg-indigo-50" />
+                            <SortableHeader label="WMI 회복" sortKey="mental.wmi" infoContent="회복 탄력성 지수(Wellness & Mindset Index)입니다.\n실패나 극심한 스트레스 상황을 겪은 후,\n얼마나 빠르게 본래의 경기력으로 돌아올 수 있는지 측정합니다." className="text-center bg-indigo-50 border-r border-slate-200" />
+                            <SortableHeader label="긴장관리" sortKey="mental.tension" infoContent="경기 전후로 발생하는 압박감과 불안감을\n선수 스스로 인지하고 통제하는 능력입니다.\n최적의 각성 상태를 유지하도록 돕습니다." className="text-center" />
+                            <SortableHeader label="지원환경" sortKey="mental.support" infoContent="가족, 코치, 동료로부터 받는 심리적 지지의 정도입니다.\n건강한 지지 체계는 선수의 안정적인\n성장을 담보하는 핵심 기반입니다." className="text-center" />
+                            <SortableHeader label="준비능력" sortKey="mental.prep" infoContent="시합을 위해 신체적, 심리적으로\n철저히 대비하는 루틴 형성 능력입니다." className="text-center" />
+                            <SortableHeader label="실수회복" sortKey="mental.recovery" infoContent="경기 중 실수 후 감정적으로 무너지지 않고\n즉각적으로 다음 플레이에 집중하는 실전 회복 능력입니다." className="text-center" />
+                            <SortableHeader label="집중조절" sortKey="mental.focus" infoContent="산만한 환경 속에서도 불필요한 자극을 차단하고\n자신의 플레이에만 주의를 기울이는 능력입니다." className="text-center" />
+                            <SortableHeader label="경기안정" sortKey="mental.stability" infoContent="외부 환경, 스코어, 판정 등에 흔들리지 않고\n일관된 퍼포먼스를 보여주는 심리적 단단함입니다." className="text-center" />
+                          </>
+                        )}
+
+                        {activeTab === 'physical' && (
+                          <>
+                            <SortableHeader label="체중(kg)" sortKey="weight" className="text-right" />
+                            <SortableHeader label="체지방(%)" sortKey="physical.fat" className="text-right" />
+                            <SortableHeader label="체외수분비" sortKey="physical.ecw" infoContent="세포 외 수분 비율입니다.\n0.380을 초과할 경우 영양 불균형, 부종, 피로 누적 등\n신체 컨디션 저하를 의심할 수 있습니다." className="text-right border-r border-slate-200" />
+                            
+                            <th colSpan="3" className="px-3 py-2.5 text-center font-bold text-slate-700 bg-teal-50/50 text-xs border-r border-slate-200">
+                              Y-Balance Test
+                              <InfoTooltip content="신체의 동적 밸런스 능력을 측정합니다.\n좌우의 점수 차이가 크거나 총합 점수가 낮으면\n하지 부상 발생 확률이 크게 증가합니다." />
+                            </th>
+
+                            <SortableHeader label="HRV균형" sortKey="physical.hrv.balance" infoContent="교감신경과 부교감신경의 밸런스 점수입니다.\n수치가 높을수록 자율신경계가 안정적이며,\n회복 능력이 뛰어남을 의미합니다." className="text-center bg-blue-50/50" />
+                            <SortableHeader label="LF" sortKey="physical.hrv.lf" infoContent="저주파 성분(Low Frequency).\n주로 교감신경의 활성도를 나타내며,\n육체적/정신적 스트레스 상황에서 증가합니다." className="text-center bg-blue-50/50" />
+                            <SortableHeader label="HF" sortKey="physical.hrv.hf" infoContent="고주파 성분(High Frequency).\n부교감신경의 활성도를 나타내며,\n충분한 휴식과 회복 상태에서 수치가 높아집니다." className="text-center bg-blue-50/50" />
+                            <SortableHeader label="RMSSD" sortKey="physical.hrv.rmssd" infoContent="심박변이도 지표 중 하나로,\n심장 미주신경(부교감신경)의 활성도를 반영합니다.\n선수의 일일 회복 상태를 파악하는 핵심 지표입니다." className="text-center bg-blue-50/50 border-r border-slate-200" />
+
+                            <th colSpan="3" className="px-3 py-2.5 text-center font-bold text-slate-700 bg-purple-50/50 text-xs border-r border-slate-200">
+                              근골격계 초음파 위험도
+                              <InfoTooltip content="초음파 검사를 통해 확인된 힘줄 및 근막의 염증 소견입니다.\n- 아킬레스건 (발뒤꿈치)\n- 슬개건 (무릎 앞쪽)\n- 족저근막 (발바닥)" />
+                            </th>
+
+                            <SortableHeader label="RED-S 위험" sortKey="physical.riskLevel.redSRisk" infoContent="상대적 에너지 결핍 상태 (Relative Energy Deficiency in Sport).\n운동으로 소비하는 에너지가 섭취량보다 많아\n부상 위험이 급증하는 위험 상태입니다." className="text-center bg-[#e30613]/5" />
+                            <SortableHeader label="신체부하 위험" sortKey="physical.riskLevel.phyLoadRisk" infoContent="최근 누적된 훈련 강도로 인해\n신체의 근골격계에 가해진 구조적 부하의\n위험 정도를 평가합니다." className="text-center bg-[#e30613]/5" />
+                            <SortableHeader label="피로 위험" sortKey="physical.riskLevel.fatigueRisk" infoContent="자율신경계(HRV) 분석을 통해\n중추신경계의 전반적인 신체적, 정신적\n피로 누적도를 평가합니다." className="text-center bg-[#e30613]/5 border-r border-slate-200" />
+                          </>
+                        )}
+
+                        {activeTab === 'growth' && (
+                          <>
+                            <SortableHeader label="현재키(cm)" sortKey="height" className="text-right bg-[#fbbc04]/10" />
+                            <SortableHeader label="뼈나이(연월)" sortKey="growth.boneAgeDecimal" className="text-center bg-[#fbbc04]/10" />
+                            <SortableHeader label="성장단계" sortKey="growth.stage" infoContent="생물학적 성숙도 단계입니다.\nPre-PHV부터 Stage 5까지 구분되며,\n각 시기에 맞는 트레이닝 접근이 필요합니다." className="text-center bg-[#fbbc04]/10 border-r border-slate-200" />
+                            <SortableHeader label="예측키(PAH)" sortKey="growth.pah" infoContent="현재 키, 역연령, 그리고 판독된 골연령(뼈나이)을\n종합적으로 수식에 대입하여 산출한\n성인 시점의 예측 신장입니다." className="text-right bg-[#0b1c2d]/5 font-bold" />
+                          </>
+                        )}
+                      </tr>
+
+                      {/* 피지컬 탭의 경우 그룹 헤더 아래에 서브 헤더 배치 */}
+                      {activeTab === 'physical' && (
+                        <tr>
+                          <th className="bg-slate-50 sticky left-0 z-50"></th>
+                          <th className="bg-slate-50 sticky left-16 z-50 border-r border-slate-200"></th>
+                          <th></th>
+                          <th></th>
+                          <th></th>
+                          <th className="border-r border-slate-200"></th>
+
+                          {/* Y-Balance Subheaders */}
+                          <th className="px-3 py-1.5 text-center text-[10px] text-slate-500 bg-teal-50/20 font-semibold border-t border-slate-100">Left</th>
+                          <th className="px-3 py-1.5 text-center text-[10px] text-slate-500 bg-teal-50/20 font-semibold border-t border-slate-100">Right</th>
+                          <th className="px-3 py-1.5 text-center text-[10px] text-slate-500 bg-teal-50/20 font-semibold border-t border-slate-100 border-r border-slate-200">Score</th>
+
+                          <th></th><th></th><th></th><th className="border-r border-slate-200"></th>
+
+                          {/* 초음파 Subheaders */}
+                          <th className="px-3 py-1.5 text-center text-[10px] text-slate-500 bg-purple-50/20 font-semibold border-t border-slate-100">아킬레스건(L/R)</th>
+                          <th className="px-3 py-1.5 text-center text-[10px] text-slate-500 bg-purple-50/20 font-semibold border-t border-slate-100">무릎(L/R)</th>
+                          <th className="px-3 py-1.5 text-center text-[10px] text-slate-500 bg-purple-50/20 font-semibold border-t border-slate-100 border-r border-slate-200">발바닥(L/R)</th>
+
+                          <th></th><th></th><th className="border-r border-slate-200"></th>
+                        </tr>
+                      )}
+                    </thead>
+
+                    <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                      {/* 팀 평균(AVG) 행 */}
+                      {teamStats && (
+                        <tr key="team-avg-row" className="bg-slate-100 border-b-2 border-slate-300 relative z-10 shadow-sm">
+                          <td className="px-3 py-2.5 text-center text-slate-500 font-bold text-[10px] sticky left-0 z-20 bg-slate-100">AVG</td>
+                          <td className="px-3 py-2.5 font-black text-[#0b1c2d] sticky left-16 z-20 bg-slate-100 border-r border-slate-200">팀 평균</td>
+                          <td className="px-3 py-2.5 text-center text-slate-400">-</td>
+
+                          {activeTab === 'mental' && (
+                            <>
+                              <td className={`px-3 py-2.5 text-center bg-indigo-50/50 ${getScoreColor(teamStats.mental.mgi)}`}>{teamStats.mental.mgi.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center bg-indigo-50/30 border-r border-slate-200 ${getScoreColor(teamStats.mental.wmi)}`}>{teamStats.mental.wmi.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(teamStats.mental.tension)}`}>{teamStats.mental.tension.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(teamStats.mental.support)}`}>{teamStats.mental.support.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(teamStats.mental.prep)}`}>{teamStats.mental.prep.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(teamStats.mental.recovery)}`}>{teamStats.mental.recovery.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(teamStats.mental.focus)}`}>{teamStats.mental.focus.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(teamStats.mental.stability)}`}>{teamStats.mental.stability.toFixed(1)}</td>
+                            </>
+                          )}
+
+                          {activeTab === 'physical' && (
+                            <>
+                              <td className="px-3 py-2.5 text-right font-bold text-slate-700">{teamStats.physical.weight.toFixed(1)}</td>
+                              <td className="px-3 py-2.5 text-right font-bold text-slate-700">{teamStats.physical.fat.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-right border-r border-slate-200 ${getEcwColor(teamStats.physical.ecw)}`}>{teamStats.physical.ecw.toFixed(3)}</td>
+                              
+                              <td className="px-3 py-2.5 text-center font-bold text-slate-600 bg-teal-50/30">{teamStats.physical.yBalanceLeft.toFixed(1)}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-slate-600 bg-teal-50/30">{teamStats.physical.yBalanceRight.toFixed(1)}</td>
+                              <td className="px-3 py-2.5 text-center font-black text-teal-700 bg-teal-50/30 border-r border-slate-200">{teamStats.physical.yBalanceScore.toFixed(1)}</td>
+
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(teamStats.physical.hrvBalance)}`}>{teamStats.physical.hrvBalance.toFixed(1)}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-slate-700">{teamStats.physical.hrvLf.toFixed(0)}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-slate-700">{teamStats.physical.hrvHf.toFixed(0)}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-slate-700 border-r border-slate-200">{teamStats.physical.hrvRmssd.toFixed(0)}</td>
+
+                              <td className="px-3 py-2.5 text-center bg-purple-50/30 text-slate-400">-</td>
+                              <td className="px-3 py-2.5 text-center bg-purple-50/30 text-slate-400">-</td>
+                              <td className="px-3 py-2.5 text-center bg-purple-50/30 border-r border-slate-200 text-slate-400">-</td>
+
+                              <td className="px-3 py-2.5 text-center bg-[#e30613]/5 text-slate-400">-</td>
+                              <td className="px-3 py-2.5 text-center bg-[#e30613]/5 text-slate-400">-</td>
+                              <td className="px-3 py-2.5 text-center bg-[#e30613]/5 border-r border-slate-200 text-slate-400">-</td>
+                            </>
+                          )}
+
+                          {activeTab === 'growth' && (
+                            <>
+                              <td className="px-3 py-2.5 text-right bg-[#fbbc04]/10 font-bold text-[#0b1c2d]">{teamStats.growth.height.toFixed(1)}</td>
+                              <td className="px-3 py-2.5 text-center bg-[#fbbc04]/10 text-[#d97706] font-bold">
+                                {Math.floor(teamStats.growth.avgBoneAge)}년 {Math.round((teamStats.growth.avgBoneAge % 1) * 12)}월
+                              </td>
+                              <td className="px-3 py-2.5 text-center bg-[#fbbc04]/10 text-slate-400 border-r border-slate-200">-</td>
+                              <td className="px-3 py-2.5 text-right bg-[#0b1c2d]/10 font-black text-[#0b1c2d] text-sm">{teamStats.growth.pah.toFixed(1)}</td>
+                            </>
+                          )}
+                        </tr>
+                      )}
+
+                      {/* 개별 선수 기록 리스트 */}
+                      {processedData.map((player) => (
+                        <tr key={player.recordId} className="hover:bg-[#f1f5f9] transition-colors relative z-10">
+                          
+                          <td className="px-3 py-2.5 text-slate-500 font-mono text-[10px] sticky left-0 z-20 bg-white group-hover:bg-[#f1f5f9]">{player.playerId}</td>
+                          <td 
+                            className="px-3 py-2.5 font-bold text-blue-600 underline cursor-pointer sticky left-16 z-20 bg-white group-hover:bg-[#f1f5f9] border-r border-slate-100"
+                            onClick={() => handlePlayerClick(player.playerId)}
+                          >
+                            {player.name}
+                          </td>
+                          <td className="px-3 py-2.5 text-slate-600 font-mono tracking-tighter">{player.birth}</td>
+
+                          {activeTab === 'mental' && (
+                            <>
+                              <td className={`px-3 py-2.5 text-center bg-indigo-50/30 ${getScoreColor(player.mental.mgi)}`}>{player.mental.mgi.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center bg-indigo-50/10 border-r border-slate-100 ${getScoreColor(player.mental.wmi)}`}>{player.mental.wmi.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(player.mental.tension)}`}>{player.mental.tension.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(player.mental.support)}`}>{player.mental.support.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(player.mental.prep)}`}>{player.mental.prep.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(player.mental.recovery)}`}>{player.mental.recovery.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(player.mental.focus)}`}>{player.mental.focus.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(player.mental.stability)}`}>{player.mental.stability.toFixed(1)}</td>
+                            </>
+                          )}
+
+                          {activeTab === 'physical' && (
+                            <>
+                              <td className="px-3 py-2.5 text-right text-slate-700">{player.weight.toFixed(1)}</td>
+                              <td className="px-3 py-2.5 text-right text-slate-700">{player.physical.fat.toFixed(1)}</td>
+                              <td className={`px-3 py-2.5 text-right border-r border-slate-100 ${getEcwColor(player.physical.ecw)}`}>{player.physical.ecw.toFixed(3)}</td>
+                              
+                              {/* Y-Balance */}
+                              <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/10 font-mono tracking-tighter">{player.physical.yBalance.left}</td>
+                              <td className="px-3 py-2.5 text-center text-slate-600 bg-teal-50/10 font-mono tracking-tighter">{player.physical.yBalance.right}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-teal-700 bg-teal-50/10 border-r border-slate-100">{player.physical.yBalance.score}</td>
+
+                              {/* HRV */}
+                              <td className={`px-3 py-2.5 text-center ${getScoreColor(player.physical.hrv.balance)}`}>{player.physical.hrv.balance.toFixed(1)}</td>
+                              <td className="px-3 py-2.5 text-center text-slate-700 font-mono tracking-tighter">{player.physical.hrv.lf}</td>
+                              <td className="px-3 py-2.5 text-center text-slate-700 font-mono tracking-tighter">{player.physical.hrv.hf}</td>
+                              <td className="px-3 py-2.5 text-center text-slate-700 font-mono tracking-tighter border-r border-slate-100">{player.physical.hrv.rmssd}</td>
+
+                              {/* 초음파 */}
+                              <td className="px-3 py-2.5 text-center bg-purple-50/10">
+                                <span className="flex items-center justify-center gap-1">
+                                  <StatusBadge minimal status={player.physical.ultrasound.achillesL} />
+                                  <StatusBadge minimal status={player.physical.ultrasound.achillesR} />
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-center bg-purple-50/10">
+                                <span className="flex items-center justify-center gap-1">
+                                  <StatusBadge minimal status={player.physical.ultrasound.kneeL} />
+                                  <StatusBadge minimal status={player.physical.ultrasound.kneeR} />
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-center bg-purple-50/10 border-r border-slate-100">
+                                <span className="flex items-center justify-center gap-1">
+                                  <StatusBadge minimal status={player.physical.ultrasound.footL} />
+                                  <StatusBadge minimal status={player.physical.ultrasound.footR} />
+                                </span>
+                              </td>
+
+                              {/* 일반 리스크 */}
+                              <td className="px-3 py-2.5 text-center bg-[#e30613]/5"><StatusBadge status={player.physical.riskLevel.redSRisk} /></td>
+                              <td className="px-3 py-2.5 text-center bg-[#e30613]/5"><StatusBadge status={player.physical.riskLevel.phyLoadRisk} /></td>
+                              <td className="px-3 py-2.5 text-center bg-[#e30613]/5 border-r border-slate-100"><StatusBadge status={player.physical.riskLevel.fatigueRisk} /></td>
+                            </>
+                          )}
+
+                          {activeTab === 'growth' && (
+                            <>
+                              <td className="px-3 py-2.5 text-right bg-[#fbbc04]/5 font-bold text-[#0b1c2d]">{player.height.toFixed(1)}</td>
+                              <td className="px-3 py-2.5 text-center bg-[#fbbc04]/5 text-[#d97706] font-bold">{player.growth.boneAgeYear}년 {player.growth.boneAgeMonth}월</td>
+                              <td className="px-3 py-2.5 text-center bg-[#fbbc04]/5 font-bold text-slate-700 border-r border-slate-100">{player.growth.stage}</td>
+                              <td className="px-3 py-2.5 text-right bg-[#0b1c2d]/5 font-black text-[#0b1c2d] text-sm">{player.growth.pah.toFixed(1)}</td>
+                            </>
+                          )}
+
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* 범례 푸터 (멘탈 탭에만 표시) */}
+                {activeTab === 'mental' && (
+                  <div className="bg-slate-50 border-t border-slate-200 px-4 py-2 flex items-center gap-4 text-[10px] text-slate-500 shrink-0 relative z-50">
+                    <span className="font-bold text-slate-700">점수 범례:</span>
+                    <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-[#10b981] mr-1"></div> 우수 (4.5 이상)</span>
+                    <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-[#fbbc04] mr-1"></div> 보통 (3.0 ~ 4.4)</span>
+                    <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-[#e30613] mr-1"></div> 취약 (3.0 미만)</span>
+                  </div>
+                )}
+
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
