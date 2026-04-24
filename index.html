@@ -46,7 +46,7 @@
   <div id="root" class="min-h-screen w-full flex flex-col"></div>
 
   <script type="text/babel" data-type="module">
-    import React, { useState, useMemo } from 'react';
+    import React, { useState, useMemo, useEffect } from 'react';
     import { createRoot } from 'react-dom/client';
     import {
       Brain, Activity, Bone, AlertCircle, Trophy, Shield, 
@@ -55,7 +55,9 @@
       ArrowLeft, ChevronUp, ChevronDown, CheckCircle2, ShieldAlert, X
     } from 'lucide-react';
     import {
-      RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer, Tooltip as RechartsTooltip
+      CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+      ScatterChart, Scatter, XAxis, YAxis, ZAxis, ReferenceArea, ReferenceLine,
+      RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend
     } from 'recharts';
 
     // ==========================================
@@ -68,19 +70,19 @@
     const FIRST_NAMES = ['민준', '서준', '도윤', '예준', '시우', '하준', '지호', '주원', '건우', '우진', '선우', '서진'];
 
     const MENTAL_INFO = {
-      tension: { title: '긴장 관리', desc: '떨리는 상황에서도 침착하게 내 플레이를 하는 능력이에요.', context: '중요한 경기나 지고 있을 때 얼마나 당황하지 않는지 보여줘요.' },
-      support: { title: '도움 받기', desc: '힘들 때 코치님이나 친구들에게 도움을 잘 청하는 능력이에요.', context: '혼자 끙끙 앓지 않고 팀과 잘 소통하는지 보여줘요.' },
-      prep: { title: '경기 준비', desc: '경기 전에 몸과 마음을 완벽하게 세팅하는 능력이에요.', context: '루틴을 잘 지키고 경기에 집중할 준비가 되었는지 알 수 있어요.' },
-      recovery: { title: '실수 털어내기', desc: '실수했을 때 빨리 잊고 다시 경기에 집중하는 힘이에요.', context: '패스 미스나 골을 먹힌 직후에 바로 다음 수비로 전환하는 모습에서 나타나요.' },
-      focus: { title: '집중력 유지', desc: '짜증 나거나 힘든 상황에서도 포지션과 작전에 집중하는 힘이에요.', context: '화가 나더라도 팀 플레이를 끝까지 책임지는 모습입니다.' },
-      matchStab: { title: '경기 기복 덜하기', desc: '언제나 비슷한 실력을 보여주는 안정감이에요.', context: '강팀을 만나거나 압박이 심할 때도 내 페이스를 유지하는지 봅니다.' },
-      mentalStab: { title: '마음의 평화', desc: '스트레스를 받아도 마음을 잘 다스리는 능력이에요.', context: '관중 소리나 심판 판정에 쉽게 휩쓸리지 않습니다.' },
-      indep: { title: '내 고집 지키기', desc: '남들의 시선보다 나만의 플레이 기준을 믿는 힘이에요.', context: '주변의 칭찬이나 비판에 흔들리지 않고 묵묵히 내 역할을 다합니다.' },
-      selfLearn: { title: '스스로 연습하기', desc: '시키지 않아도 스스로 부족한 점을 찾아서 훈련하는 태도예요.', context: '훈련 목표를 정하고, 끝나면 무엇이 좋았는지 스스로 돌아봅니다.' },
-      imagery: { title: '머릿속 시뮬레이션', desc: '실제 경기 전에 어떤 플레이를 할지 상상해보는 능력이에요.', context: '슈팅이나 돌파 장면을 미리 머릿속으로 그려보고 들어갑니다.' },
-      adapt: { title: '빠른 적응력', desc: '새로운 전술이나 낯선 환경에 빨리 익숙해지는 힘이에요.', context: '갑자기 포지션이 바뀌어도 당황하지 않고 금방 적응합니다.' },
-      failRec: { title: '큰 위기 극복', desc: '엄청나게 큰 실수나 패배 위기에서도 무너지지 않는 강인함이에요.', context: '치명적인 실책을 해도 포기하지 않고 끝까지 뛰는 투지를 뜻해요.' },
-      attitude: { title: '성실한 훈련 태도', desc: '훈련할 때 꾀부리지 않고 100% 최선을 다하는 자세예요.', context: '체력 훈련이 힘들거나 컨디션이 나빠도 훈련에 집중합니다.' }
+      tension: { title: '수행불안(긴장)', desc: '압박 상황에서도 마음을 정리하고 플레이를 이어가는 힘입니다.', context: '경기 전후로 발생하는 압박감과 불안감을 스스로 인지하고 통제합니다.' },
+      support: { title: '지원환경(도움)', desc: '어려움이 생겼을 때, 주변(코치, 부모, 동료)의 도움을 적절히 구하는 능력입니다.', context: '경기 결과보다 과정과 감정을 소통하며 심리적 지지를 얻습니다.' },
+      prep: { title: '경기 준비 능력', desc: '목표 설정과 이미지 트레이닝처럼 경기 전 준비의 질을 의미합니다.', context: '경기 전 루틴을 철저히 수행하며 신체적/심리적으로 완벽히 대비합니다.' },
+      recovery: { title: '실수 후 회복력', desc: '실수 뒤 감정에 오래 머물지 않고 다시 경기로 돌아오는 힘입니다.', context: '경기 중 패스 미스나 턴오버 후 즉시 다음 수비나 임무로 전환합니다.' },
+      focus: { title: '자기조절 집중력', desc: '감정과 충동이 흔들릴 때 다시 해야 할 것에 집중하는 힘입니다.', context: '감정이 격해지더라도 팀 전술적 원칙과 포지션을 끝까지 책임집니다.' },
+      matchStab: { title: '경기 안정성', desc: '긴장 속에서도 플레이 흐름을 유지하는 능력입니다.', context: '실수 직후, 강한 압박을 받을 때, 경기 템포가 빨라질 때 흔들리지 않습니다.' },
+      mentalStab: { title: '심리 안정성', desc: '감정 변화와 스트레스 속에서도 마음의 균형을 찾는 능력입니다.', context: '실점 직후, 벤치 반응이나 관중 소음이 신경 쓰일 때 정서적 흔들림을 제어합니다.' },
+      indep: { title: '평가 독립성', desc: '타인의 평가보다 자신의 기준으로 플레이를 유지하는 능력입니다.', context: '부모, 코치, 동료의 반응에 흔들리지 않고 내 역할과 플레이 원칙을 지킵니다.' },
+      selfLearn: { title: '자기조절 학습', desc: '훈련을 스스로 계획하고 개선하려는 학습 태도입니다.', context: '훈련 목표를 명확히 설정하고 자신의 플레이를 돌아보며 다음 연습으로 연결합니다.' },
+      imagery: { title: '심상 훈련 활용', desc: '경기 장면을 머릿속으로 그리며 준비하는 능력입니다.', context: '침투 타이밍, 돌파, 슈팅 전후 장면을 실제 상황 전에 머릿속으로 생생히 재생합니다.' },
+      adapt: { title: '주위 적응력', desc: '새로운 환경과 팀 상황에 적응하는 능력입니다.', context: '포지션 변화, 새로운 팀 분위기, 지시 변화 속에서 혼란 없이 자연스럽게 녹아듭니다.' },
+      failRec: { title: '실패 후 회복력', desc: '치명적인 실책 등 거대한 실패 상황에 직면했을 때 심리적 붕괴를 막는 강인함입니다.', context: '결정적 실점 관여, 패배 직전 위기 상황에서도 투지를 잃지 않고 템포를 살립니다.' },
+      attitude: { title: '훈련 태도', desc: '훈련에 대한 몰입과 지속적인 노력 태도입니다.', context: '힘든 체력 훈련이나 컨디션이 좋지 않은 날에도 기본 집중력과 실행력을 유지합니다.' }
     };
 
     const generateRandomScore = (min, max) => Number((Math.random() * (max - min) + min).toFixed(1));
@@ -96,13 +98,13 @@
 
       let coachScore = (mental.mgi * 10) * 0.4 + availability * 0.6; 
       
-      let stageText = '키 크기 전';
+      let stageText = 'Pre-PHV';
       let stageScore = 2; 
       if (growth.boneAgeDecimal >= 11.5 && growth.boneAgeDecimal < 13.5) {
-        stageText = '폭풍 성장 중';
+        stageText = 'PHV (급성장)';
         stageScore = 5;
       } else if (growth.boneAgeDecimal >= 13.5) {
-        stageText = '성장 거의 끝남';
+        stageText = 'Post-PHV (완성)';
         stageScore = 8;
       }
       stageScore = Math.max(0, Math.min(10, stageScore + generateRandomScore(-1.5, 1.5)));
@@ -222,7 +224,7 @@
           availability: calcAvg(players, p => p.coach.availability),
           mgi100: Math.round(calcAvg(players, p => p.mental100)),
           riskCount: players.filter(p => p.physical.riskLevel.fatigueRisk === '위험' || p.physical.riskLevel.phyLoadRisk === '위험').length,
-          growthSpurtCount: players.filter(p => p.coach.stageText === '폭풍 성장 중').length,
+          growthSpurtCount: players.filter(p => p.coach.stageText === 'PHV (급성장)').length,
           mentalMajor: {
             tension: calcAvg(players, p => p.mental.major.tension),
             support: calcAvg(players, p => p.mental.major.support),
@@ -236,7 +238,7 @@
           availability: calcAvg(pastData, p => p.coach.availability),
           mgi100: Math.round(calcAvg(pastData, p => to100(p.mental.mgi))),
           riskCount: pastData.filter(p => p.physical.riskLevel.fatigueRisk === '위험' || p.physical.riskLevel.phyLoadRisk === '위험').length,
-          growthSpurtCount: pastData.filter(p => p.coach.stageText === '폭풍 성장 중').length,
+          growthSpurtCount: pastData.filter(p => p.coach.stageText === 'PHV (급성장)').length,
         };
 
         const positions = POSITIONS.map(pos => {
@@ -347,6 +349,49 @@
       );
     };
 
+    const DotWithLabel = (props) => {
+      const { cx, cy, payload, onClick } = props;
+      
+      if (cx == null || cy == null || isNaN(cx) || isNaN(cy)) return null;
+
+      let dotColor = "#cbd5e1";
+      if (payload.y >= 60 && payload.x < 5) dotColor = "#10b981"; 
+      else if (payload.y >= 60 && payload.x >= 5) dotColor = "#3b82f6"; 
+      else if (payload.y < 60 && payload.x < 5) dotColor = "#fbbc04"; 
+      else if (payload.y < 60 && payload.x >= 5) dotColor = "#e30613"; 
+
+      return (
+        <g 
+          onClick={() => onClick && onClick(payload.playerId)} 
+          style={{ cursor: 'pointer' }}
+          transform={`translate(${cx}, ${cy})`}
+        >
+          <circle r={7} fill={dotColor} stroke="#fff" strokeWidth={2} className="drop-shadow-md" />
+          <text y={18} textAnchor="middle" fill="#0f172a" fontSize={11} fontWeight="900" stroke="#ffffff" strokeWidth={3} paintOrder="stroke" className="pointer-events-none">{payload.name}</text>
+        </g>
+      );
+    };
+
+    const MatrixTooltip = ({ active, payload }) => {
+      if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        return (
+          <div className="bg-[#0b1c2d]/95 backdrop-blur-sm text-white p-3 rounded-lg shadow-xl border border-slate-700 z-[100] min-w-[150px] pointer-events-none">
+            <p className="font-black text-sm flex justify-between items-center mb-2 pb-1 border-b border-slate-700">
+              {data.name} <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded text-slate-300">{data.position}</span>
+            </p>
+            <div className="space-y-1.5">
+              <ScoreBar100 label="활용도" score={data.coach.coachScore} colorClass="bg-blue-500" />
+              <ScoreBar100 label="가용성" score={data.coach.availability} colorClass="bg-green-500" />
+              <ScoreBar100 label="멘탈" score={data.mental100} colorClass="bg-indigo-500" />
+            </div>
+            <p className="text-[10px] text-[#fbbc04] font-bold mt-3 text-center bg-white/10 py-1 rounded">성장단계: {data.coach.stageText}</p>
+          </div>
+        );
+      }
+      return null;
+    };
+
     const ActionListCard = ({ title, players, valueKey, unit, isWarning=false, isPlus=false, onPlayerClick }) => {
       const getValue = (obj, path) => path.split('.').reduce((o, i) => o[i], obj);
       return (
@@ -394,10 +439,10 @@
 
       const radarData = [
         { subject: '긴장관리', value: to100(player.mental.major.tension), fullMark: 100 },
-        { subject: '도움받기', value: to100(player.mental.major.support), fullMark: 100 },
-        { subject: '경기준비', value: to100(player.mental.major.prep), fullMark: 100 },
-        { subject: '실수털기', value: to100(player.mental.major.recovery), fullMark: 100 },
-        { subject: '집중유지', value: to100(player.mental.major.focus), fullMark: 100 },
+        { subject: '지원환경', value: to100(player.mental.major.support), fullMark: 100 },
+        { subject: '준비능력', value: to100(player.mental.major.prep), fullMark: 100 },
+        { subject: '실수회복', value: to100(player.mental.major.recovery), fullMark: 100 },
+        { subject: '집중조절', value: to100(player.mental.major.focus), fullMark: 100 },
       ];
 
       return (
@@ -518,7 +563,7 @@
                         <div className="space-y-2">
                           {topStrengths.map(s => (
                             <div key={s.key} onClick={() => setSelectedMental(MENTAL_INFO[s.key])} className="text-sm font-bold text-slate-800 bg-white px-3 py-2 rounded-lg shadow-sm cursor-pointer hover:border-emerald-400 border border-transparent transition-all">
-                              {s.name} <span className="text-emerald-600 ml-1">능력 훌륭함</span>
+                              {s.name} <span className="text-emerald-600 ml-1">능력 우수</span>
                             </div>
                           ))}
                         </div>
@@ -528,7 +573,7 @@
                         <div className="space-y-2">
                           {bottomWeaknesses.map(s => (
                             <div key={s.key} onClick={() => setSelectedMental(MENTAL_INFO[s.key])} className="text-sm font-bold text-slate-800 bg-white px-3 py-2 rounded-lg shadow-sm cursor-pointer hover:border-rose-400 border border-transparent transition-all">
-                              {s.name} <span className="text-rose-600 ml-1">노력 필요함</span>
+                              {s.name} <span className="text-rose-600 ml-1">집중 관리 필요</span>
                             </div>
                           ))}
                         </div>
@@ -562,7 +607,7 @@
                     <h4 className="font-black text-indigo-800 text-base mb-2">{selectedMental.title}</h4>
                     <p className="text-sm text-slate-700 mb-4 leading-relaxed">{selectedMental.desc}</p>
                     <div className="bg-white/80 p-4 rounded-xl text-xs text-indigo-900 border border-indigo-100 shadow-sm">
-                      <span className="font-black text-indigo-700 mr-2 text-sm">⚽ 축구할 때 이런 모습이에요:</span> <br className="sm:hidden" /> {selectedMental.context}
+                      <span className="font-black text-indigo-700 mr-2 text-sm">⚽ 축구 현장 상황:</span> <br className="sm:hidden" /> {selectedMental.context}
                     </div>
                   </div>
                 )}
@@ -584,6 +629,7 @@
       const [bioSort, setBioSort] = useState({ key: 'boneAge', dir: 'asc' }); 
       const [selectedPlayerId, setSelectedPlayerId] = useState(null);
       const [activeModal, setActiveModal] = useState(null); 
+      const [activePositionModal, setActivePositionModal] = useState(null); // 포지션 클릭 모달 상태
 
       const tabs = [
         { id: 'matrix', title: '선수 활용 지도 (매트릭스)', icon: LayoutGrid },
@@ -625,6 +671,12 @@
         return bioSort.dir === 'asc' ? <ChevronUp className="w-3 h-3 ml-0.5 inline text-[#e30613]" /> : <ChevronDown className="w-3 h-3 ml-0.5 inline text-[#e30613]" />;
       };
 
+      const matrixData = useMemo(() => players.map(p => ({
+        ...p,
+        x: p.coach.stageScore,
+        y: p.coach.coachScore
+      })), [players]);
+
       const renderMatrixTab = () => (
         <div className="flex flex-col gap-4 animate-in fade-in duration-300 pb-8">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col min-h-[500px] relative">
@@ -639,22 +691,19 @@
               <div className="text-right text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">아래쪽: 성장 완성도 / 왼쪽: 현재 실력</div>
             </div>
             
-            {/* HTML/CSS Absolute Positioning으로 완벽하게 고정된 매트릭스 점 구현 */}
             <div className="flex-1 relative matrix-bg rounded-xl border border-slate-200 p-2 overflow-hidden">
-              {/* Background Quadrant Labels */}
               <div className="absolute top-4 left-4 text-base font-black text-[#10b981] bg-white/70 px-2 py-1 rounded shadow-sm pointer-events-none z-0">즉시전력 (잠재력)</div>
               <div className="absolute top-4 right-4 text-base font-black text-[#3b82f6] bg-white/70 px-2 py-1 rounded shadow-sm pointer-events-none z-0">핵심 전력</div>
               <div className="absolute bottom-4 left-4 text-base font-black text-[#fbbc04] bg-white/70 px-2 py-1 rounded shadow-sm pointer-events-none z-0">장기 육성군</div>
               <div className="absolute bottom-4 right-4 text-base font-black text-[#e30613] bg-white/70 px-2 py-1 rounded shadow-sm pointer-events-none z-0">컨디션 관리군</div>
               
-              {/* Crosshairs */}
               <div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-slate-300 z-0"></div>
               <div className="absolute left-1/2 top-0 bottom-0 border-l border-dashed border-slate-300 z-0"></div>
 
-              <div className="absolute inset-4">
+              <div className="absolute inset-4 z-10">
                 {players.map(player => {
-                  const xVal = player.coach.stageScore; // 0 ~ 10
-                  const yVal = player.coach.coachScore; // 20 ~ 100
+                  const xVal = player.coach.stageScore; 
+                  const yVal = player.coach.coachScore; 
 
                   const leftPercent = `${Math.max(0, Math.min(100, (xVal / 10) * 100))}%`;
                   const topPercent = `${Math.max(0, Math.min(100, 100 - ((yVal - 20) / 80) * 100))}%`;
@@ -672,16 +721,13 @@
                       style={{ left: leftPercent, top: topPercent }}
                       onClick={() => setSelectedPlayerId(player.playerId)}
                     >
-                      {/* 점 (떨림을 방지하기 위해 scale 효과 대신 ring-4 효과 사용) */}
                       <div className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.3)] transition-all group-hover:ring-4 group-hover:ring-white/50 ${dotColor}`}></div>
                       
-                      {/* 이름 라벨 */}
                       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 whitespace-nowrap text-[11px] font-black text-[#0f172a] pointer-events-none transition-all group-hover:text-blue-600" 
                            style={{ textShadow: '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0px 2px 2px rgba(0,0,0,0.1)' }}>
                         {player.name}
                       </div>
 
-                      {/* 커스텀 툴팁 (CSS Hover 기반으로 즉각적 반응) */}
                       <div className="absolute bottom-full mb-3 left-1/2 transform -translate-x-1/2 hidden group-hover:block pointer-events-none min-w-[160px] z-50">
                         <div className="bg-[#0b1c2d]/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-xl border border-slate-700">
                           <p className="font-black text-sm flex justify-between items-center mb-2 pb-1 border-b border-slate-700">
@@ -694,7 +740,6 @@
                           </div>
                           <p className="text-[10px] text-[#fbbc04] font-bold mt-3 text-center bg-white/10 py-1 rounded">현재 성장: {player.coach.stageText}</p>
                         </div>
-                        {/* 툴팁 꼬리 */}
                         <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#0b1c2d]/95 absolute top-full left-1/2 transform -translate-x-1/2"></div>
                       </div>
                     </div>
@@ -736,7 +781,7 @@
                     </div>
                     <TrendIndicator value={player.diff.availability} />
                   </div>
-                  <ScoreBar100 label="뛸 수 있는 상태" score={player.coach.availability} colorClass={barColor} showLabel={false} />
+                  <ScoreBar100 label="출전 가능성" score={player.coach.availability} colorClass={barColor} showLabel={false} />
                   <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200">
                     {player.physical.riskLevel.phyLoadRisk === '위험' && <span className="text-[10px] bg-[#e30613]/10 text-[#e30613] font-bold px-2 py-1 rounded">무리함</span>}
                     {player.physical.riskLevel.fatigueRisk === '위험' && <span className="text-[10px] bg-[#fbbc04]/20 text-[#d97706] font-bold px-2 py-1 rounded">피로 쌓임</span>}
@@ -865,7 +910,7 @@
               <div className="p-5 border-b border-slate-100 shrink-0">
                 <h3 className="text-base font-black text-[#0b1c2d] flex items-center gap-2">
                   <Shield className="w-5 h-5 text-slate-600" />
-                  포지션별 멘탈 점수 (100점 만점)
+                  포지션별 멘탈 점수 (행을 클릭하면 선수들이 보여요)
                 </h3>
                 <p className="text-xs text-slate-500 font-bold mt-1">공격수, 미드필더 등 포지션별로 마음이 얼마나 단단한지 보여줘요.</p>
               </div>
@@ -885,10 +930,15 @@
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {positions.map(pos => {
                       return (
-                        <tr key={pos.position} className="hover:bg-slate-50 transition-colors">
+                        <tr 
+                          key={pos.position} 
+                          className="hover:bg-indigo-50 cursor-pointer transition-colors"
+                          onClick={() => setActivePositionModal(pos.position)}
+                          title={`${pos.position} 소속 선수 보기`}
+                        >
                           <td className="px-4 py-4 font-black text-[#0b1c2d]">{pos.position}</td>
                           <td className="px-4 py-4 text-center">
-                            <span className="font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">{pos.mgi100Avg}점</span>
+                            <span className="font-black text-indigo-600 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-100">{pos.mgi100Avg}점</span>
                           </td>
                           <td className="px-4 py-4 w-36"><ScoreBar100 score={to100(pos.major.tension)} colorClass="bg-blue-400" showLabel={false} /></td>
                           <td className="px-4 py-4 w-36"><ScoreBar100 score={to100(pos.major.support)} colorClass="bg-emerald-400" showLabel={false} /></td>
@@ -926,6 +976,7 @@
             </div>
           </header>
 
+          {/* 전체 스크롤을 유지하도록 높이 제한을 해제(min-h-0 제거) */}
           <main className="flex-1 flex flex-col p-4 md:p-6 max-w-[1600px] mx-auto w-full relative z-0">
             
             <div className="flex flex-col lg:flex-row gap-4 mb-6">
@@ -972,9 +1023,10 @@
               {activeTab === 'mental' && renderMentalTab()}
             </div>
 
+            {/* 대시보드 공통 하단 Disclaimer */}
             <DisclaimerFooter />
 
-            {/* --- 명단 모달 팝업 --- */}
+            {/* --- 명단 모달 팝업 (위험군, 급성장군) --- */}
             {activeModal && (
               <div className="fixed inset-0 bg-[#0b1c2d]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
@@ -1014,6 +1066,37 @@
                 </div>
               </div>
             )}
+
+            {/* --- 포지션 클릭 시 나타나는 선수 명단 팝업 (멘탈 탭) --- */}
+            {activePositionModal && (
+              <div className="fixed inset-0 bg-[#0b1c2d]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
+                  <div className="p-5 border-b border-slate-100 flex justify-between items-center shrink-0">
+                    <h2 className="text-xl font-black text-[#0b1c2d] flex items-center gap-2.5">
+                      <Shield className="text-indigo-600 w-6 h-6"/>
+                      {activePositionModal} 포지션 선수 명단
+                    </h2>
+                    <button onClick={() => setActivePositionModal(null)} className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0b1c2d] rounded-lg transition-colors"><X className="w-6 h-6"/></button>
+                  </div>
+                  <div className="p-3 overflow-y-auto custom-scrollbar flex-1">
+                    <div className="space-y-2">
+                      {players.filter(p => p.position === activePositionModal).sort((a,b) => b.mental100 - a.mental100).map(p => (
+                        <div key={p.playerId} onClick={() => { setActivePositionModal(null); setSelectedPlayerId(p.playerId); }} className="flex justify-between items-center p-4 hover:bg-indigo-50 cursor-pointer border border-transparent hover:border-indigo-200 rounded-xl transition-colors shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <span className="font-black text-indigo-600 text-base hover:underline">{p.name}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-xs font-bold text-slate-500 mr-2">멘탈 점수</span>
+                            <span className="text-sm font-black text-indigo-600 bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200">{p.mental100}점</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </main>
 
           {/* --- 선수 상세 전체 화면 모달 --- */}
